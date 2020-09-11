@@ -217,6 +217,8 @@ func (c *Compiled) RunContext(ctx context.Context) (err error) {
 	defer c.lock.Unlock()
 
 	v := NewVM(c.bytecode, c.globals, c.maxAllocs)
+	v.Context.Value = ctx
+
 	ch := make(chan error, 1)
 	go func() {
 		ch <- v.Run()

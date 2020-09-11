@@ -1,6 +1,7 @@
 package tengo
 
 import (
+	"context"
 	"fmt"
 	"sync/atomic"
 
@@ -18,20 +19,22 @@ type frame struct {
 
 // VM is a virtual machine that executes the bytecode compiled by Compiler.
 type VM struct {
-	constants   []Object
-	stack       [StackSize]Object
-	sp          int
-	globals     []Object
-	fileSet     *parser.SourceFileSet
-	frames      [MaxFrames]frame
-	framesIndex int
-	curFrame    *frame
-	curInsts    []byte
-	ip          int
-	aborting    int64
-	maxAllocs   int64
-	allocs      int64
-	err         error
+	Context       *Context
+	constants     []Object
+	stack         [StackSize]Object
+	sp            int
+	globals       []Object
+	fileSet       *parser.SourceFileSet
+	frames        [MaxFrames]frame
+	framesIndex   int
+	curFrame      *frame
+	curInsts      []byte
+	ip            int
+	aborting      int64
+	maxAllocs     int64
+	allocs        int64
+	err           error
+	contextCancel context.CancelFunc
 }
 
 // NewVM creates a VM.
@@ -44,6 +47,7 @@ func NewVM(
 		globals = make([]Object, GlobalsSize)
 	}
 	v := &VM{
+		Context:     &Context{Value: context.Background()},
 		constants:   bytecode.Constants,
 		sp:          0,
 		globals:     globals,
@@ -62,6 +66,8 @@ func NewVM(
 // Abort aborts the execution.
 func (v *VM) Abort() {
 	atomic.StoreInt64(&v.aborting, 1)
+	v.contextCancel()
+	v.contextCancel = nil
 }
 
 // Run starts the execution.
@@ -73,6 +79,11 @@ func (v *VM) Run() (err error) {
 	v.framesIndex = 1
 	v.ip = -1
 	v.allocs = v.maxAllocs + 1
+
+	// set context cancelation
+	var ctx context.Context
+	ctx, v.contextCancel = context.WithCancel(v.Context.Value)
+	v.Context = &Context{Value: ctx}
 
 	v.run()
 	atomic.StoreInt64(&v.aborting, 0)
@@ -629,7 +640,11 @@ func (v *VM) run() {
 				v.sp = v.sp - numArgs + callee.NumLocals
 			} else {
 				var args []Object
+				if value.CanCallContext() {
+					args = append(args, v.Context)
+				}
 				args = append(args, v.stack[v.sp-numArgs:v.sp]...)
+
 				ret, e := value.Call(args...)
 				v.sp -= numArgs + 1
 
@@ -672,16 +687,16 @@ func (v *VM) run() {
 			} else {
 				retVal = UndefinedValue
 			}
-			//v.sp--
+			// v.sp--
 			v.framesIndex--
 			v.curFrame = &v.frames[v.framesIndex-1]
 			v.curInsts = v.curFrame.fn.Instructions
 			v.ip = v.curFrame.ip
-			//v.sp = lastFrame.basePointer - 1
+			// v.sp = lastFrame.basePointer - 1
 			v.sp = v.frames[v.framesIndex].basePointer
 			// skip stack overflow check because (newSP) <= (oldSP)
 			v.stack[v.sp-1] = retVal
-			//v.sp++
+			// v.sp++
 		case parser.OpDefineLocal:
 			v.ip++
 			localIndex := int(v.curInsts[v.ip])

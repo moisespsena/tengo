@@ -31,6 +31,9 @@ const (
 // CallableFunc is a function signature for the callable functions.
 type CallableFunc = func(args ...Object) (ret Object, err error)
 
+// CallableFuncContext is a function signature for the callable functions with vm context.
+type CallableFuncContext = func(ctx *Context, args ...Object) (ret Object, err error)
+
 // CountObjects returns the number of objects that a given object o contains.
 // For scalar value types, it will always be 1. For compound value types,
 // this will include its elements and all of their elements recursively.
@@ -207,6 +210,8 @@ func ToInterface(o Object) (res interface{}) {
 		res = o.Value
 	case *Bytes:
 		res = o.Value
+	case *Context:
+		res = o.Value
 	case *Array:
 		res = make([]interface{}, len(o.Value))
 		for i, val := range o.Value {
@@ -301,6 +306,8 @@ func FromInterface(v interface{}) (Object, error) {
 		return v, nil
 	case CallableFunc:
 		return &UserFunction{Value: v}, nil
+	case CallableFuncContext:
+		return &UserFunctionContext{Value: v}, nil
 	}
 	return nil, fmt.Errorf("cannot convert to object: %T", v)
 }

@@ -2,6 +2,7 @@ package tengo
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math"
 	"strconv"
@@ -77,6 +78,10 @@ type Object interface {
 
 	// CanCall should return whether the Object can be Called.
 	CanCall() bool
+
+	// CanCallContext returns whether the Object can be Called with first args
+	// as vm context.
+	CanCallContext() bool
 }
 
 // ObjectImpl represents a default Object Implementation. To defined a new
@@ -145,6 +150,12 @@ func (o *ObjectImpl) Call(_ ...Object) (ret Object, err error) {
 
 // CanCall returns whether the Object can be Called.
 func (o *ObjectImpl) CanCall() bool {
+	return false
+}
+
+// CanCallContext returns whether the Object can be Called with first args
+// as vm context.
+func (o *ObjectImpl) CanCallContext() bool {
 	return false
 }
 
@@ -1610,4 +1621,63 @@ func (o *UserFunction) Call(args ...Object) (Object, error) {
 // CanCall returns whether the Object can be Called.
 func (o *UserFunction) CanCall() bool {
 	return true
+}
+
+// UserFunctionContext represents a user function with context signature.
+type UserFunctionContext struct {
+	ObjectImpl
+	Name       string
+	Value      CallableFuncContext
+	EncodingID string
+}
+
+// TypeName returns the name of the type.
+func (o *UserFunctionContext) TypeName() string {
+	return "user-function-context:" + o.Name
+}
+
+func (o *UserFunctionContext) String() string {
+	return "<user-function-context>"
+}
+
+// Copy returns a copy of the type.
+func (o *UserFunctionContext) Copy() Object {
+	return &UserFunctionContext{Value: o.Value}
+}
+
+// Equals returns true if the value of the type is equal to the value of
+// another object.
+func (o *UserFunctionContext) Equals(_ Object) bool {
+	return false
+}
+
+// Call invokes a user function.
+func (o *UserFunctionContext) Call(args ...Object) (Object, error) {
+	return o.Value(args[0].(*Context), args[1:]...)
+}
+
+// CanCall returns whether the Object can be Called.
+func (o *UserFunctionContext) CanCall() bool {
+	return true
+}
+
+// CanCallContext returns whether the Object can be Called with first args
+// as vm context.
+func (o *UserFunctionContext) CanCallContext() bool {
+	return true
+}
+
+// Context represents the context.Context
+type Context struct {
+	ObjectImpl
+	Value context.Context
+}
+
+// IndexGet returns the value for the given key.
+func (c *Context) IndexGet(index Object) (res Object, err error) {
+	var i = c.Value.Value(ToInterface(index))
+	if i == nil {
+		res = UndefinedValue
+	}
+	return FromInterface(i)
 }
