@@ -70,6 +70,25 @@ func (v *VM) Abort() {
 	v.contextCancel = nil
 }
 
+// RunContext starts the execution with context canceler.
+func (v *VM) RunContext(ctx context.Context) (err error) {
+	errch := make(chan error)
+	go func() {
+		errch <- v.Run()
+	}()
+	select {
+	case err = <-errch:
+	case <-ctx.Done():
+		v.Abort()
+		<-errch
+		err = ctx.Err()
+	}
+	if err != nil {
+		return
+	}
+	return
+}
+
 // Run starts the execution.
 func (v *VM) Run() (err error) {
 	// reset VM states
@@ -119,6 +138,18 @@ func (v *VM) run() {
 		case parser.OpNull:
 			v.stack[v.sp] = UndefinedValue
 			v.sp++
+		case parser.OpLOr:
+			v.ip++
+			if v.stack[v.sp-1].IsFalsy() {
+				v.sp--
+				v.ip = int(v.curInsts[v.ip]) - 1
+			}
+		case parser.OpNullCoalesce:
+			v.ip++
+			if v.stack[v.sp-1] == UndefinedValue {
+				v.sp--
+				v.ip = int(v.curInsts[v.ip]) - 1
+			}
 		case parser.OpBinaryOp:
 			v.ip++
 			right := v.stack[v.sp-1]
@@ -640,11 +671,12 @@ func (v *VM) run() {
 				v.sp = v.sp - numArgs + callee.NumLocals
 			} else {
 				var args []Object
+
 				if value.CanCallContext() {
 					args = append(args, v.Context)
 				}
-				args = append(args, v.stack[v.sp-numArgs:v.sp]...)
 
+				args = append(args, v.stack[v.sp-numArgs:v.sp]...)
 				ret, e := value.Call(args...)
 				v.sp -= numArgs + 1
 

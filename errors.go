@@ -49,6 +49,9 @@ var (
 	// ErrNotImplemented is an error where an Object has not implemented a
 	// required method.
 	ErrNotImplemented = errors.New("not implemented")
+
+	// ErrContextNotCancelable represents context without canceler function.
+	ErrContextNotCancelable = errors.New("context not cancelable")
 )
 
 // ErrInvalidArgumentType represents an invalid argument value type error.
@@ -61,4 +64,17 @@ type ErrInvalidArgumentType struct {
 func (e ErrInvalidArgumentType) Error() string {
 	return fmt.Sprintf("invalid type for argument '%s': expected %s, found %s",
 		e.Name, e.Expected, e.Found)
+}
+
+// ErrInvalidMapIndexValueType represents an invalid argument value type error.
+type ErrInvalidMapIndexValueType struct {
+	MapName   string
+	IndexName string
+	Expected  string
+	Found     string
+}
+
+func (e ErrInvalidMapIndexValueType) Error() string {
+	return fmt.Sprintf("invalid value for index '%s' in map '%s': expected %s, found %s",
+		e.IndexName, e.MapName, e.Expected, e.Found)
 }

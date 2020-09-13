@@ -69,7 +69,7 @@ func TestNumObjects(t *testing.T) {
 	}}, 7)
 	testCountObjects(t, tengo.TrueValue, 1)
 	testCountObjects(t, tengo.FalseValue, 1)
-	testCountObjects(t, &tengo.BuiltinFunction{}, 1)
+	testCountObjects(t, &tengo.BuiltinContextFunction{}, 1)
 	testCountObjects(t, &tengo.Bytes{Value: []byte("foobar")}, 1)
 	testCountObjects(t, &tengo.Char{Value: '가'}, 1)
 	testCountObjects(t, &tengo.CompiledFunction{}, 1)

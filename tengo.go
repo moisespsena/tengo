@@ -3,6 +3,7 @@ package tengo
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"strconv"
 	"time"
 )
@@ -31,8 +32,8 @@ const (
 // CallableFunc is a function signature for the callable functions.
 type CallableFunc = func(args ...Object) (ret Object, err error)
 
-// CallableFuncContext is a function signature for the callable functions with vm context.
-type CallableFuncContext = func(ctx *Context, args ...Object) (ret Object, err error)
+// CallableContextFunc is a function signature for the callable functions with vm context.
+type CallableContextFunc = func(ctx *Context, args ...Object) (ret Object, err error)
 
 // CountObjects returns the number of objects that a given object o contains.
 // For scalar value types, it will always be 1. For compound value types,
@@ -238,6 +239,8 @@ func ToInterface(o Object) (res interface{}) {
 		res = errors.New(o.String())
 	case *Undefined:
 		res = nil
+	case Interfacer:
+		return o.Interface()
 	case Object:
 		return o
 	}
@@ -306,8 +309,20 @@ func FromInterface(v interface{}) (Object, error) {
 		return v, nil
 	case CallableFunc:
 		return &UserFunction{Value: v}, nil
-	case CallableFuncContext:
+	case CallableContextFunc:
 		return &UserFunctionContext{Value: v}, nil
+	case reflect.Value:
+		if res, err := FromReflectValue(v); err != nil {
+			return nil, err
+		} else {
+			return res, nil
+		}
+	default:
+		if res, err := FromReflectValue(reflect.ValueOf(v)); err != nil {
+			return nil, err
+		} else {
+			return res, nil
+		}
 	}
 	return nil, fmt.Errorf("cannot convert to object: %T", v)
 }

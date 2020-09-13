@@ -12,7 +12,8 @@ func TestTimes(t *testing.T) {
 	time1 := time.Date(1982, 9, 28, 19, 21, 44, 999, time.Now().Location())
 	time2 := time.Now()
 
-	module(t, "times").call("sleep", 1).expect(tengo.UndefinedValue)
+	module(t, "times").call("sleep", int(time.Second)).expect(tengo.UndefinedValue)
+	require.Equal(t, int(time.Second.Seconds()), int(time.Now().Sub(time2).Seconds()), "sleep delay")
 
 	require.True(t, module(t, "times").
 		call("since", time.Now().Add(-time.Hour)).

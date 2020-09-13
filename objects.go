@@ -24,6 +24,10 @@ var (
 	UndefinedValue Object = &Undefined{}
 )
 
+type Interfacer interface {
+	Interface() interface{}
+}
+
 // Object represents an object in the VM.
 type Object interface {
 	// TypeName should return the name of the type.
@@ -328,40 +332,46 @@ func (o *Bool) GobEncode() (b []byte, err error) {
 	return
 }
 
-// BuiltinFunction represents a builtin function.
-type BuiltinFunction struct {
+// BuiltinContextFunction represents a builtin function with vm context.
+type BuiltinContextFunction struct {
 	ObjectImpl
 	Name  string
-	Value CallableFunc
+	Value CallableContextFunc
 }
 
 // TypeName returns the name of the type.
-func (o *BuiltinFunction) TypeName() string {
+func (o *BuiltinContextFunction) TypeName() string {
 	return "builtin-function:" + o.Name
 }
 
-func (o *BuiltinFunction) String() string {
+func (o *BuiltinContextFunction) String() string {
 	return "<builtin-function>"
 }
 
 // Copy returns a copy of the type.
-func (o *BuiltinFunction) Copy() Object {
-	return &BuiltinFunction{Value: o.Value}
+func (o *BuiltinContextFunction) Copy() Object {
+	return &BuiltinContextFunction{Value: o.Value}
 }
 
 // Equals returns true if the value of the type is equal to the value of
 // another object.
-func (o *BuiltinFunction) Equals(_ Object) bool {
+func (o *BuiltinContextFunction) Equals(_ Object) bool {
 	return false
 }
 
 // Call executes a builtin function.
-func (o *BuiltinFunction) Call(args ...Object) (Object, error) {
-	return o.Value(args...)
+func (o *BuiltinContextFunction) Call(args ...Object) (Object, error) {
+	return o.Value(args[0].(*Context), args[1:]...)
 }
 
 // CanCall returns whether the Object can be Called.
-func (o *BuiltinFunction) CanCall() bool {
+func (o *BuiltinContextFunction) CanCall() bool {
+	return true
+}
+
+// CanCallContext returns whether the Object can be Called with first args
+// as vm context.
+func (o *BuiltinContextFunction) CanCallContext() bool {
 	return true
 }
 
@@ -1627,7 +1637,7 @@ func (o *UserFunction) CanCall() bool {
 type UserFunctionContext struct {
 	ObjectImpl
 	Name       string
-	Value      CallableFuncContext
+	Value      CallableContextFunc
 	EncodingID string
 }
 
@@ -1670,7 +1680,8 @@ func (o *UserFunctionContext) CanCallContext() bool {
 // Context represents the context.Context
 type Context struct {
 	ObjectImpl
-	Value context.Context
+	Value  context.Context
+	cancel context.CancelFunc
 }
 
 // IndexGet returns the value for the given key.
@@ -1680,4 +1691,13 @@ func (c *Context) IndexGet(index Object) (res Object, err error) {
 		res = UndefinedValue
 	}
 	return FromInterface(i)
+}
+
+// Copy returns a copy of the type.
+func (c *Context) Copy() Object {
+	return &Context{Value: c.Value}
+}
+
+func (c *Context) String() string {
+	return "<context>"
 }

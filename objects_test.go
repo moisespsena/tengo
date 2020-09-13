@@ -29,7 +29,7 @@ func TestObject_TypeName(t *testing.T) {
 	require.Equal(t, "string-iterator", o.TypeName())
 	o = &tengo.MapIterator{}
 	require.Equal(t, "map-iterator", o.TypeName())
-	o = &tengo.BuiltinFunction{Name: "fn"}
+	o = &tengo.BuiltinContextFunction{Name: "fn"}
 	require.Equal(t, "builtin-function:fn", o.TypeName())
 	o = &tengo.UserFunction{Name: "fn"}
 	require.Equal(t, "user-function:fn", o.TypeName())
@@ -74,7 +74,7 @@ func TestObject_IsFalsy(t *testing.T) {
 	require.True(t, o.IsFalsy())
 	o = &tengo.MapIterator{}
 	require.True(t, o.IsFalsy())
-	o = &tengo.BuiltinFunction{}
+	o = &tengo.BuiltinContextFunction{}
 	require.False(t, o.IsFalsy())
 	o = &tengo.CompiledFunction{}
 	require.False(t, o.IsFalsy())
@@ -146,7 +146,7 @@ func TestObject_BinaryOp(t *testing.T) {
 	o = &tengo.MapIterator{}
 	_, err = o.BinaryOp(token.Add, tengo.UndefinedValue)
 	require.Error(t, err)
-	o = &tengo.BuiltinFunction{}
+	o = &tengo.BuiltinContextFunction{}
 	_, err = o.BinaryOp(token.Add, tengo.UndefinedValue)
 	require.Error(t, err)
 	o = &tengo.CompiledFunction{}

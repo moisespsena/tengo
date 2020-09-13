@@ -1,6 +1,11 @@
 package tengo
 
-var builtinFuncs = []*BuiltinFunction{
+import (
+	"context"
+	"time"
+)
+
+var builtinFuncs = []*BuiltinContextFunction{
 	{
 		Name:  "len",
 		Value: builtinLen,
@@ -121,21 +126,49 @@ var builtinFuncs = []*BuiltinFunction{
 		Name:  "format",
 		Value: builtinFormat,
 	},
+	{
+		Name:  "context",
+		Value: builtinContext,
+	},
+	{
+		Name:  "context_timeout",
+		Value: builtinContextTimeout,
+	},
+	{
+		Name:  "context_deadline",
+		Value: builtinContextWithDeadline,
+	},
+	{
+		Name:  "context_canceler",
+		Value: builtinContextCanceler,
+	},
+	{
+		Name:  "context_cancel",
+		Value: builtinContextCancel,
+	},
+	{
+		Name:  "struct",
+		Value: builtinStruct,
+	},
+	{
+		Name:  "new",
+		Value: builtinNew,
+	},
 }
 
 // GetAllBuiltinFunctions returns all builtin function objects.
-func GetAllBuiltinFunctions() []*BuiltinFunction {
-	return append([]*BuiltinFunction{}, builtinFuncs...)
+func GetAllBuiltinFunctions() []*BuiltinContextFunction {
+	return append([]*BuiltinContextFunction{}, builtinFuncs...)
 }
 
-func builtinTypeName(args ...Object) (Object, error) {
+func builtinTypeName(_ *Context, args ...Object) (Object, error) {
 	if len(args) != 1 {
 		return nil, ErrWrongNumArguments
 	}
 	return &String{Value: args[0].TypeName()}, nil
 }
 
-func builtinIsString(args ...Object) (Object, error) {
+func builtinIsString(_ *Context, args ...Object) (Object, error) {
 	if len(args) != 1 {
 		return nil, ErrWrongNumArguments
 	}
@@ -145,7 +178,7 @@ func builtinIsString(args ...Object) (Object, error) {
 	return FalseValue, nil
 }
 
-func builtinIsInt(args ...Object) (Object, error) {
+func builtinIsInt(_ *Context, args ...Object) (Object, error) {
 	if len(args) != 1 {
 		return nil, ErrWrongNumArguments
 	}
@@ -155,7 +188,7 @@ func builtinIsInt(args ...Object) (Object, error) {
 	return FalseValue, nil
 }
 
-func builtinIsFloat(args ...Object) (Object, error) {
+func builtinIsFloat(_ *Context, args ...Object) (Object, error) {
 	if len(args) != 1 {
 		return nil, ErrWrongNumArguments
 	}
@@ -165,7 +198,7 @@ func builtinIsFloat(args ...Object) (Object, error) {
 	return FalseValue, nil
 }
 
-func builtinIsBool(args ...Object) (Object, error) {
+func builtinIsBool(_ *Context, args ...Object) (Object, error) {
 	if len(args) != 1 {
 		return nil, ErrWrongNumArguments
 	}
@@ -175,7 +208,7 @@ func builtinIsBool(args ...Object) (Object, error) {
 	return FalseValue, nil
 }
 
-func builtinIsChar(args ...Object) (Object, error) {
+func builtinIsChar(_ *Context, args ...Object) (Object, error) {
 	if len(args) != 1 {
 		return nil, ErrWrongNumArguments
 	}
@@ -185,7 +218,7 @@ func builtinIsChar(args ...Object) (Object, error) {
 	return FalseValue, nil
 }
 
-func builtinIsBytes(args ...Object) (Object, error) {
+func builtinIsBytes(_ *Context, args ...Object) (Object, error) {
 	if len(args) != 1 {
 		return nil, ErrWrongNumArguments
 	}
@@ -195,7 +228,7 @@ func builtinIsBytes(args ...Object) (Object, error) {
 	return FalseValue, nil
 }
 
-func builtinIsArray(args ...Object) (Object, error) {
+func builtinIsArray(_ *Context, args ...Object) (Object, error) {
 	if len(args) != 1 {
 		return nil, ErrWrongNumArguments
 	}
@@ -205,7 +238,7 @@ func builtinIsArray(args ...Object) (Object, error) {
 	return FalseValue, nil
 }
 
-func builtinIsImmutableArray(args ...Object) (Object, error) {
+func builtinIsImmutableArray(_ *Context, args ...Object) (Object, error) {
 	if len(args) != 1 {
 		return nil, ErrWrongNumArguments
 	}
@@ -215,7 +248,7 @@ func builtinIsImmutableArray(args ...Object) (Object, error) {
 	return FalseValue, nil
 }
 
-func builtinIsMap(args ...Object) (Object, error) {
+func builtinIsMap(_ *Context, args ...Object) (Object, error) {
 	if len(args) != 1 {
 		return nil, ErrWrongNumArguments
 	}
@@ -225,7 +258,7 @@ func builtinIsMap(args ...Object) (Object, error) {
 	return FalseValue, nil
 }
 
-func builtinIsImmutableMap(args ...Object) (Object, error) {
+func builtinIsImmutableMap(_ *Context, args ...Object) (Object, error) {
 	if len(args) != 1 {
 		return nil, ErrWrongNumArguments
 	}
@@ -235,7 +268,7 @@ func builtinIsImmutableMap(args ...Object) (Object, error) {
 	return FalseValue, nil
 }
 
-func builtinIsTime(args ...Object) (Object, error) {
+func builtinIsTime(_ *Context, args ...Object) (Object, error) {
 	if len(args) != 1 {
 		return nil, ErrWrongNumArguments
 	}
@@ -245,7 +278,7 @@ func builtinIsTime(args ...Object) (Object, error) {
 	return FalseValue, nil
 }
 
-func builtinIsError(args ...Object) (Object, error) {
+func builtinIsError(_ *Context, args ...Object) (Object, error) {
 	if len(args) != 1 {
 		return nil, ErrWrongNumArguments
 	}
@@ -255,7 +288,7 @@ func builtinIsError(args ...Object) (Object, error) {
 	return FalseValue, nil
 }
 
-func builtinIsUndefined(args ...Object) (Object, error) {
+func builtinIsUndefined(_ *Context, args ...Object) (Object, error) {
 	if len(args) != 1 {
 		return nil, ErrWrongNumArguments
 	}
@@ -265,7 +298,7 @@ func builtinIsUndefined(args ...Object) (Object, error) {
 	return FalseValue, nil
 }
 
-func builtinIsFunction(args ...Object) (Object, error) {
+func builtinIsFunction(_ *Context, args ...Object) (Object, error) {
 	if len(args) != 1 {
 		return nil, ErrWrongNumArguments
 	}
@@ -276,7 +309,7 @@ func builtinIsFunction(args ...Object) (Object, error) {
 	return FalseValue, nil
 }
 
-func builtinIsCallable(args ...Object) (Object, error) {
+func builtinIsCallable(_ *Context, args ...Object) (Object, error) {
 	if len(args) != 1 {
 		return nil, ErrWrongNumArguments
 	}
@@ -286,7 +319,7 @@ func builtinIsCallable(args ...Object) (Object, error) {
 	return FalseValue, nil
 }
 
-func builtinIsIterable(args ...Object) (Object, error) {
+func builtinIsIterable(_ *Context, args ...Object) (Object, error) {
 	if len(args) != 1 {
 		return nil, ErrWrongNumArguments
 	}
@@ -297,7 +330,7 @@ func builtinIsIterable(args ...Object) (Object, error) {
 }
 
 // len(obj object) => int
-func builtinLen(args ...Object) (Object, error) {
+func builtinLen(_ *Context, args ...Object) (Object, error) {
 	if len(args) != 1 {
 		return nil, ErrWrongNumArguments
 	}
@@ -323,7 +356,7 @@ func builtinLen(args ...Object) (Object, error) {
 	}
 }
 
-func builtinFormat(args ...Object) (Object, error) {
+func builtinFormat(_ *Context, args ...Object) (Object, error) {
 	numArgs := len(args)
 	if numArgs == 0 {
 		return nil, ErrWrongNumArguments
@@ -347,14 +380,14 @@ func builtinFormat(args ...Object) (Object, error) {
 	return &String{Value: s}, nil
 }
 
-func builtinCopy(args ...Object) (Object, error) {
+func builtinCopy(_ *Context, args ...Object) (Object, error) {
 	if len(args) != 1 {
 		return nil, ErrWrongNumArguments
 	}
 	return args[0].Copy(), nil
 }
 
-func builtinString(args ...Object) (Object, error) {
+func builtinString(_ *Context, args ...Object) (Object, error) {
 	argsLen := len(args)
 	if !(argsLen == 1 || argsLen == 2) {
 		return nil, ErrWrongNumArguments
@@ -375,7 +408,7 @@ func builtinString(args ...Object) (Object, error) {
 	return UndefinedValue, nil
 }
 
-func builtinInt(args ...Object) (Object, error) {
+func builtinInt(_ *Context, args ...Object) (Object, error) {
 	argsLen := len(args)
 	if !(argsLen == 1 || argsLen == 2) {
 		return nil, ErrWrongNumArguments
@@ -393,7 +426,7 @@ func builtinInt(args ...Object) (Object, error) {
 	return UndefinedValue, nil
 }
 
-func builtinFloat(args ...Object) (Object, error) {
+func builtinFloat(_ *Context, args ...Object) (Object, error) {
 	argsLen := len(args)
 	if !(argsLen == 1 || argsLen == 2) {
 		return nil, ErrWrongNumArguments
@@ -411,7 +444,7 @@ func builtinFloat(args ...Object) (Object, error) {
 	return UndefinedValue, nil
 }
 
-func builtinBool(args ...Object) (Object, error) {
+func builtinBool(_ *Context, args ...Object) (Object, error) {
 	if len(args) != 1 {
 		return nil, ErrWrongNumArguments
 	}
@@ -428,7 +461,7 @@ func builtinBool(args ...Object) (Object, error) {
 	return UndefinedValue, nil
 }
 
-func builtinChar(args ...Object) (Object, error) {
+func builtinChar(_ *Context, args ...Object) (Object, error) {
 	argsLen := len(args)
 	if !(argsLen == 1 || argsLen == 2) {
 		return nil, ErrWrongNumArguments
@@ -446,7 +479,7 @@ func builtinChar(args ...Object) (Object, error) {
 	return UndefinedValue, nil
 }
 
-func builtinBytes(args ...Object) (Object, error) {
+func builtinBytes(_ *Context, args ...Object) (Object, error) {
 	argsLen := len(args)
 	if !(argsLen == 1 || argsLen == 2) {
 		return nil, ErrWrongNumArguments
@@ -472,7 +505,7 @@ func builtinBytes(args ...Object) (Object, error) {
 	return UndefinedValue, nil
 }
 
-func builtinTime(args ...Object) (Object, error) {
+func builtinTime(_ *Context, args ...Object) (Object, error) {
 	argsLen := len(args)
 	if !(argsLen == 1 || argsLen == 2) {
 		return nil, ErrWrongNumArguments
@@ -491,7 +524,7 @@ func builtinTime(args ...Object) (Object, error) {
 }
 
 // append(arr, items...)
-func builtinAppend(args ...Object) (Object, error) {
+func builtinAppend(_ *Context, args ...Object) (Object, error) {
 	if len(args) < 2 {
 		return nil, ErrWrongNumArguments
 	}
@@ -512,7 +545,7 @@ func builtinAppend(args ...Object) (Object, error) {
 // builtinDelete deletes Map keys
 // usage: delete(map, "key")
 // key must be a string
-func builtinDelete(args ...Object) (Object, error) {
+func builtinDelete(_ *Context, args ...Object) (Object, error) {
 	argsLen := len(args)
 	if argsLen != 2 {
 		return nil, ErrWrongNumArguments
@@ -540,7 +573,7 @@ func builtinDelete(args ...Object) (Object, error) {
 // builtinSplice deletes and changes given Array, returns deleted items.
 // usage:
 // deleted_items := splice(array[,start[,delete_count[,item1[,item2[,...]]]])
-func builtinSplice(args ...Object) (Object, error) {
+func builtinSplice(_ *Context, args ...Object) (Object, error) {
 	argsLen := len(args)
 	if argsLen == 0 {
 		return nil, ErrWrongNumArguments
@@ -608,4 +641,291 @@ func builtinSplice(args ...Object) (Object, error) {
 
 	// return deleted items
 	return &Array{Value: deleted}, nil
+}
+
+// builtinContext returns context or VM context copy with values.
+// usage:
+// vm_context := context()
+// background_context := context(undefined, [key1,value1[,keyN,valueN[,...]]])
+// context_with_values := context(context_var, key1,value1[,keyN,valueN[,...]])
+func builtinContext(vmCtx *Context, args ...Object) (Object, error) {
+	var (
+		ctx *Context
+		ok  bool
+		l   = len(args)
+	)
+	if l == 0 {
+		return vmCtx, nil
+	} else if ctx, ok = args[0].(*Context); ok {
+		args = args[1:]
+		l--
+	} else if args[0] == UndefinedValue {
+		ctx = &Context{Value: context.Background()}
+		args = args[1:]
+		l--
+	} else if l%2 != 0 {
+		return nil, ErrWrongNumArguments
+	}
+	if l == 0 {
+		return ctx, nil
+	}
+
+	ctx = &Context{Value: ctx.Value}
+	for i := 0; i < l; i += 2 {
+		ctx.Value = context.WithValue(ctx.Value, ToInterface(args[i]), args[i+1])
+	}
+	return ctx, nil
+}
+
+// builtinContextWithDeadline returns VM context copy with timeout.
+// if context is undefined, returns timeout of `context.Background()`.
+// usage:
+// new_context := context_deadline(context, time)
+func builtinContextWithDeadline(_ *Context, args ...Object) (Object, error) {
+	var ctx *Context
+	if l := len(args); l != 1 {
+		return nil, ErrWrongNumArguments
+	} else if args[0] == UndefinedValue {
+		ctx = &Context{Value: context.Background()}
+	} else {
+		var ok bool
+		if ctx, ok = args[0].(*Context); !ok {
+			return nil, ErrInvalidArgumentType{
+				Name:     "first",
+				Expected: "context",
+				Found:    args[0].TypeName(),
+			}
+		}
+		ctx = ctx.Copy().(*Context)
+	}
+
+	t1, ok := ToTime(args[1])
+	if !ok {
+		return nil, ErrInvalidArgumentType{
+			Name:     "second",
+			Expected: "time(compatible)",
+			Found:    args[0].TypeName(),
+		}
+	}
+	ctx = ctx.Copy().(*Context)
+	ctx.Value, ctx.cancel = context.WithDeadline(ctx.Value, t1)
+	return ctx, nil
+}
+
+// builtinContextTimeout returns VM context copy with timeout.
+// if context is undefined, returns timeout of `context.Background()`.
+// usage:
+// new_context := context_timeout(context, duration)
+func builtinContextTimeout(_ *Context, args ...Object) (Object, error) {
+	var ctx *Context
+	if l := len(args); l != 1 {
+		return nil, ErrWrongNumArguments
+	} else if args[0] == UndefinedValue {
+		ctx = &Context{Value: context.Background()}
+	} else {
+		var ok bool
+		if ctx, ok = args[0].(*Context); !ok {
+			return nil, ErrInvalidArgumentType{
+				Name:     "first",
+				Expected: "context",
+				Found:    args[0].TypeName(),
+			}
+		}
+		ctx = ctx.Copy().(*Context)
+	}
+
+	var dur time.Duration
+
+	switch v := args[1].(type) {
+	case *Int:
+		dur = time.Duration(v.Value)
+	case *Float:
+		dur = time.Duration(v.Value)
+	default:
+		return nil, ErrInvalidArgumentType{
+			Name:     "second",
+			Expected: "int|float",
+			Found:    args[0].TypeName(),
+		}
+	}
+
+	dur *= time.Second
+
+	ctx = ctx.Copy().(*Context)
+	ctx.Value, ctx.cancel = context.WithTimeout(ctx.Value, dur)
+	return ctx, nil
+}
+
+// builtinContextCanceler returns VM context copy with canceler.
+// if not have args, returns canceler of vm context.
+// if context is undefined, returns canceler of `context.Background()`.
+// usage:
+// new_context := context_canceler([context])
+// context_cancel(new_context)
+func builtinContextCanceler(vmCtx *Context, args ...Object) (Object, error) {
+	var ctx *Context
+	if l := len(args); l == 0 {
+		ctx = &Context{Value: vmCtx.Value}
+	} else if l != 1 {
+		return nil, ErrWrongNumArguments
+	} else if args[0] == UndefinedValue {
+		ctx = &Context{Value: context.Background()}
+	} else {
+		var ok bool
+		if ctx, ok = args[0].(*Context); !ok {
+			return nil, ErrInvalidArgumentType{
+				Name:     "first",
+				Expected: "context",
+				Found:    args[0].TypeName(),
+			}
+		}
+		ctx = ctx.Copy().(*Context)
+	}
+	ctx.Value, ctx.cancel = context.WithCancel(ctx.Value)
+	return ctx, nil
+}
+
+// builtinContextCancel cancel context.
+// usage:
+// new_context := context_canceler(context)
+// context_cancel(new_context)
+func builtinContextCancel(_ *Context, args ...Object) (Object, error) {
+	if len(args) != 1 {
+		return nil, ErrWrongNumArguments
+	}
+	var ctx *Context
+	if args[0] == UndefinedValue {
+		ctx = &Context{Value: context.Background()}
+	} else {
+		var ok bool
+		if ctx, ok = args[0].(*Context); !ok {
+			return nil, ErrInvalidArgumentType{
+				Name:     "first",
+				Expected: "context",
+				Found:    args[0].TypeName(),
+			}
+		}
+	}
+
+	if ctx.cancel == nil {
+		return nil, ErrContextNotCancelable
+	}
+	ctx.cancel()
+	// set fake canceler
+	ctx.cancel = func() {}
+	return UndefinedValue, nil
+}
+
+// builtinStruct define new struct from map
+// usage:
+// struct({
+//   fields: {
+//		count: 0
+//   },
+//	 init: func(this) {
+//		this.count = 1
+//   }
+//	 funcs: {
+//		increment: func(this, value) {
+//			return this.count++
+//		}
+//	 }
+// })
+func builtinStruct(_ *Context, args ...Object) (Object, error) {
+	argsLen := len(args)
+	if argsLen < 1 {
+		return nil, ErrWrongNumArguments
+	}
+
+	if m, ok := args[0].(*Map); !ok {
+		return nil, ErrInvalidArgumentType{
+			Name:     "first",
+			Expected: "map",
+			Found:    args[0].TypeName(),
+		}
+	} else {
+		var (
+			fieldsM, funcsM *Map
+		)
+		if fields, ok := m.Value["fields"]; ok {
+			if fieldsM, ok = fields.(*Map); !ok {
+				return nil, ErrInvalidMapIndexValueType{
+					MapName:   "first arg",
+					IndexName: "fields",
+					Expected:  "map",
+					Found:     fields.TypeName(),
+				}
+			}
+		}
+		if funcs, ok := m.Value["funcs"]; ok {
+			if funcsM, ok = funcs.(*Map); !ok {
+				return nil, ErrInvalidMapIndexValueType{
+					MapName:   "first arg",
+					IndexName: "funcs",
+					Expected:  "map",
+					Found:     funcs.TypeName(),
+				}
+			}
+		}
+		return NewStruct(fieldsM, funcsM)
+	}
+}
+
+// builtinStruct define new struct from map
+// usage:
+// struct({
+//   fields: {
+//		count: 0
+//   },
+//	 init: func(this) {
+//		this.count = 1
+//   }
+//	 funcs: {
+//		increment: func(this, value) {
+//			return this.count++
+//		}
+//	 }
+// })
+func builtinNew(ctx *Context, args ...Object) (res Object, err error) {
+	argsLen := len(args)
+	if argsLen < 1 {
+		return nil, ErrWrongNumArguments
+	}
+	var (
+		typ    = args[0]
+		fields *Map
+	)
+	args = args[1:]
+
+	if len(args) > 0 {
+		var ok bool
+		if fields, ok = args[0].(*Map); !ok {
+			return nil, ErrInvalidArgumentType{
+				Name:     "second",
+				Expected: "map",
+				Found:    args[0].TypeName(),
+			}
+		}
+		args = args[1:]
+	}
+	switch t := typ.(type) {
+	case *Struct, *ReflectedStruct:
+		if res, err = t.Call(append([]Object{ctx}, args...)...); err != nil {
+			return nil, err
+		}
+		if fields != nil {
+			for key, value := range fields.Value {
+				if err = res.IndexSet(&String{Value: key}, value); err != nil {
+					return nil, err
+				}
+			}
+		}
+		return
+	default:
+		return nil, ErrInvalidArgumentType{
+			Name:     "first",
+			Expected: "struct|reflect-struct",
+			Found:    t.TypeName(),
+		}
+	}
 }

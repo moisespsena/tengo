@@ -9,7 +9,7 @@ import (
 )
 
 func Test_builtinDelete(t *testing.T) {
-	var builtinDelete func(args ...tengo.Object) (tengo.Object, error)
+	var builtinDelete func(_ *tengo.Context, args ...tengo.Object) (tengo.Object, error)
 	for _, f := range tengo.GetAllBuiltinFunctions() {
 		if f.Name == "delete" {
 			builtinDelete = f.Value
@@ -98,7 +98,7 @@ func Test_builtinDelete(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := builtinDelete(tt.args.args...)
+			got, err := builtinDelete(nil, tt.args.args...)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("builtinDelete() error = %v, wantErr %v",
 					err, tt.wantErr)
@@ -133,7 +133,7 @@ func Test_builtinDelete(t *testing.T) {
 }
 
 func Test_builtinSplice(t *testing.T) {
-	var builtinSplice func(args ...tengo.Object) (tengo.Object, error)
+	var builtinSplice func(_ *tengo.Context, args ...tengo.Object) (tengo.Object, error)
 	for _, f := range tengo.GetAllBuiltinFunctions() {
 		if f.Name == "splice" {
 			builtinSplice = f.Value
@@ -331,7 +331,7 @@ func Test_builtinSplice(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := builtinSplice(tt.args...)
+			got, err := builtinSplice(nil, tt.args...)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("builtinSplice() error = %v, wantErr %v",
 					err, tt.wantErr)

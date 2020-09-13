@@ -2,12 +2,20 @@ package tengo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sync"
 
 	"github.com/d5/tengo/v2/parser"
 )
+
+const (
+	reservedVar              = "$out"
+	keyFuncCaller contextKey = "func_caller"
+)
+
+type contextKey string
 
 // Script can simplify compilation and execution of embedded scripts.
 type Script struct {
@@ -103,6 +111,9 @@ func (s *Script) Compile() (*Compiled, error) {
 		return nil, err
 	}
 
+	out := symbolTable.Define(reservedVar)
+	globals[out.Index] = UndefinedValue
+
 	c := NewCompiler(srcFile, symbolTable, nil, s.modules, nil)
 	c.EnableFileImport(s.enableFileImport)
 	c.SetImportDir(s.importDir)
@@ -138,6 +149,7 @@ func (s *Script) Compile() (*Compiled, error) {
 		bytecode:      bytecode,
 		globals:       globals,
 		maxAllocs:     s.maxAllocs,
+		outIdx:        out.Index,
 	}, nil
 }
 
@@ -199,25 +211,21 @@ type Compiled struct {
 	bytecode      *Bytecode
 	globals       []Object
 	maxAllocs     int64
+	outIdx        int
 	lock          sync.RWMutex
 }
 
 // Run executes the compiled script in the virtual machine.
 func (c *Compiled) Run() error {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
 	v := NewVM(c.bytecode, c.globals, c.maxAllocs)
+	v.Context.Value = context.WithValue(v.Context.Value, keyFuncCaller, c.ContextCaller)
 	return v.Run()
 }
 
 // RunContext is like Run but includes a context.
 func (c *Compiled) RunContext(ctx context.Context) (err error) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
 	v := NewVM(c.bytecode, c.globals, c.maxAllocs)
-	v.Context.Value = ctx
+	v.Context.Value = context.WithValue(ctx, keyFuncCaller, c.ContextCaller)
 
 	ch := make(chan error, 1)
 	go func() {
@@ -326,3 +334,118 @@ func (c *Compiled) Set(name string, value interface{}) error {
 	c.globals[idx] = obj
 	return nil
 }
+
+// CallContext calls Object and returns result. Set *Compiled object
+// before CallContext().
+func (c *Compiled) ContextCaller(ctx *Context, fn Object, args ...Object) (Object, error) {
+	if fn == nil {
+		return nil, errors.New("callable expected, got nil")
+	}
+	if !fn.CanCall() {
+		return nil, errors.New("not a callable")
+	}
+	return c.callArgs(ctx, fn, args...)
+}
+
+func (c *Compiled) callArgs(ctx *Context, fn Object,
+	args ...Object) (_ Object, err error) {
+	var v Object
+
+	switch fn := fn.(type) {
+	case *UserFunction:
+		v, err = fn.Value(args...)
+	case *UserFunctionContext:
+		v, err = fn.Value(ctx, args...)
+	case *CompiledFunction:
+		v, err = c.callCompiled(ctx, fn, args...)
+	default:
+		if fn.CanCallContext() {
+			args = append([]Object{ctx}, args...)
+		}
+		v, err = fn.Call(args...)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return v, nil
+}
+
+func (c *Compiled) callCompiled(ctx *Context, fn Object,
+	args ...Object) (Object, error) {
+	c.lock.Lock()
+	constsOffset := len(c.bytecode.Constants)
+
+	// Load fn
+	inst := MakeInstruction(parser.OpConstant, constsOffset)
+
+	// Load args
+	for i := range args {
+		inst = append(inst,
+			MakeInstruction(parser.OpConstant, constsOffset+i+1)...)
+	}
+
+	// Call, set value to a global, stop
+	inst = append(inst, MakeInstruction(parser.OpCall, len(args))...)
+	inst = append(inst, MakeInstruction(parser.OpSetGlobal, c.outIdx)...)
+	inst = append(inst, MakeInstruction(parser.OpSuspend)...)
+
+	c.bytecode.Constants = append(c.bytecode.Constants, fn)
+	c.bytecode.Constants = append(c.bytecode.Constants, args...)
+
+	// orig := s.bytecode.MainFunction
+	c.bytecode.MainFunction = &CompiledFunction{
+		Instructions: inst,
+	}
+
+	if value := ctx.Value.Value(keyFuncCaller); value == nil {
+		ctx = &Context{Value: context.WithValue(ctx.Value, keyFuncCaller, c.ContextCaller)}
+	}
+
+	var err error
+	if ctx == nil {
+		vm := NewVM(c.bytecode, c.globals, c.maxAllocs)
+		vm.Context = ctx
+		c.lock.Unlock()
+		err = vm.Run()
+	} else {
+		vm := NewVM(c.bytecode, c.globals, c.maxAllocs)
+		vm.Context = ctx
+		c.lock.Unlock()
+		err = vm.RunContext(ctx.Value)
+	}
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	// TODO: go back to normal if required
+	// s.bytecode.MainFunction = orig
+	// avoid memory leak.
+	for i := constsOffset; i < len(c.bytecode.Constants); i++ {
+		c.bytecode.Constants[i] = nil
+	}
+	c.bytecode.Constants = c.bytecode.Constants[:constsOffset]
+
+	// get symbol using index and return it
+	return c.globals[c.outIdx], err
+}
+
+func Call(ctx *Context, fun Object, args ...Object) (Object, error) {
+	value := ctx.Value.Value(keyFuncCaller)
+	if value == nil {
+		return nil, errors.New("tengo func caller not set")
+	}
+	return value.(FuncCaller)(ctx, fun, args...)
+}
+
+func CallInterface(ctx *Context, fun Object, args ...interface{}) (_ Object, err error) {
+	var tengoArgs = make([]Object, len(args))
+	for i, arg := range args {
+		if tengoArgs[i], err = FromInterface(arg); err != nil {
+			return nil, fmt.Errorf("arg %d: %s", i, err.Error())
+		}
+	}
+	return Call(ctx, fun, tengoArgs...)
+}
+
+type FuncCaller = func(ctx *Context, fun Object, args ...Object) (Object, error)

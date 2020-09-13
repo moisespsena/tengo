@@ -130,6 +130,13 @@ Two functions need to be implemented for Callable objects.
 CanCall() bool
 ```
 
+To receive VM context (`*tengo.Context`) as first argument, implements 
+`Object.CanCallContext() bool` returning `true` value.
+
+```golang
+CanCallContext() bool
+```
+
 CanCall should return whether the Object can be called. When this function
 returns true, the Object is considered Callable.
 
@@ -139,6 +146,74 @@ Call(args ...Object) (ret Object, err error)
 
 Call should take an arbitrary number of arguments and return a return value
 and/or an error, which the VM will consider as a run-time error.
+
+##### Calling tengo function passed by callback
+
+To call tengo functions passed by callback, your callable requires `CanCallContext() bool` as `true`.
+
+Example 1 (basic implementation):
+
+```go
+
+type MyCaller struct {
+    tengo.ObjectImpl
+}
+
+func (MyCaller) Call(args ...Object) (ret Object, err error) {
+    ctx := arg[0].(*tengo.Context)
+    fun := args[1]
+
+    // using tengo arguments:
+    // return tengo.Call(ctx, fun, &tengo.String{Value:"Hello!"})
+
+    // or, using interface arguments:
+    return tengo.CallInterface(ctx, fun, "Hello!")
+}
+
+func (MyCaller) CanCall() bool {
+    return true
+}
+
+func (MyCaller) CanCallContext() bool {
+    return true
+}
+```
+
+Example 2:
+
+```go
+package main
+
+import "github.com/d5/tengo"
+
+func main() {
+	// create a new Script instance
+	script := tengo.NewScript([]byte(`
+println := import("fmt").println
+
+x := 0
+println("go func result: ", go_func(func(msg) {
+	println("message arg: " + msg)
+	x++
+	return "tengo func result: " + msg
+}))
+println("x: ", x)
+`))
+	script.SetImports(stdlib.GetModuleMap(stdlib.AllModuleNames()...))
+	script.Add("go_func", func(ctx *tengo.Context, args ...tengo.Object) (tengo.Object, error) {
+		return tengo.CallInterface(ctx, args[0], "hello!")
+	})
+	if _, err := script.Run(); err != nil {
+		panic(err)
+	}
+}
+```
+
+Output:
+
+    message arg: hello!
+    go func result: tengo func result: hello!
+    x: 1
 
 #### Iterable Objects
 
