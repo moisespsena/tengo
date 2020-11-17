@@ -1843,6 +1843,101 @@ func() {
 		nil, true)
 	expectRun(t, `out = func(v) { for ;;v++ { if v == 3 { break } } }(1)`,
 		nil, tengo.UndefinedValue)
+
+	// 'f' in RHS at line 4 must reference global variable 'f'
+	// See https://github.com/d5/tengo/issues/314
+	expectRun(t, `
+f := func() { return 2 }
+out = (func() {
+	f := f()
+	return f
+})()
+	`, nil, 2)
+}
+
+func TestBlocksInGlobalScope(t *testing.T) {
+	expectRun(t, `
+f := undefined
+if true {
+	a := 1
+	f = func() {
+		a = 2
+	}
+}
+b := 3
+f()
+out = b`,
+		nil, 3)
+
+	expectRun(t, `
+func() {
+	f := undefined
+	if true {
+		a := 10
+		f = func() {
+			a = 20
+		}
+	}
+	b := 5
+	f()
+	out = b
+}()
+	`,
+		nil, 5)
+
+	expectRun(t, `
+f := undefined
+if true {
+	a := 1
+	b := 2
+	f = func() {
+		a = 3
+		b = 4
+	}
+}
+c := 5
+d := 6
+f()
+out = c + d`,
+		nil, 11)
+
+	expectRun(t, `
+fn := undefined
+if true {
+	a := 1
+	b := 2
+	if true {
+		c := 3
+		d := 4
+		fn = func() {
+			a = 5
+			b = 6
+			c = 7
+			d = 8
+		}
+	}
+}
+e := 9
+f := 10
+fn()
+out = e + f`,
+		nil, 19)
+
+	expectRun(t, `
+out = 0
+func() {
+	for x in [1, 2, 3] {
+		out += x
+	}
+}()`,
+		nil, 6)
+
+	expectRun(t, `
+out = 0
+for x in [1, 2, 3] {
+	out += x
+}`,
+		nil, 6)
 }
 
 func TestIf(t *testing.T) {
@@ -3804,7 +3899,7 @@ func traceCompileRun(
 	{
 		res = make(map[string]tengo.Object)
 		for name := range symbols {
-			sym, depth, ok := symTable.Resolve(name)
+			sym, depth, ok := symTable.Resolve(name, false)
 			if !ok || depth != 0 {
 				err = fmt.Errorf("symbol not found: %s", name)
 				return

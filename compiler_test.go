@@ -1146,6 +1146,13 @@ r["x"] = {
 `, "Parse Error: illegal character U+0040 '@'\n\tat test:3:5 (and 10 more errors)")
 
 	expectCompileError(t, `import("")`, "empty module name")
+
+	// https://github.com/d5/tengo/issues/314
+	expectCompileError(t, `
+(func() {
+	fn := fn()
+})()	
+`, "unresolved reference 'fn")
 }
 
 func TestCompilerErrorReport(t *testing.T) {
@@ -1314,7 +1321,7 @@ if a := 1; a {
 			tengo.MakeInstruction(parser.OpConstant, 2),
 			tengo.MakeInstruction(parser.OpSetGlobal, 0),
 			tengo.MakeInstruction(parser.OpGetGlobal, 0),
-			tengo.MakeInstruction(parser.OpSetGlobal, 1),
+			tengo.MakeInstruction(parser.OpSetGlobal, 2),
 			tengo.MakeInstruction(parser.OpSuspend)),
 		objectsArray(
 			intObject(1),
