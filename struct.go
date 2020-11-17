@@ -440,11 +440,84 @@ func (s *ReflectedStructInstanceMethod) Call(args ...Object) (ret Object, err er
 }
 
 func FromReflectValue(value reflect.Value) (res Object, err error) {
-	s := NewReflectedStruct(reflect.Indirect(value).Type())
-	if s == nil {
-		return
+	switch value.Kind() {
+	case reflect.Func:
+		return &UserFunction{Value: CallableFunc(func(args ...Object) (ret Object, err error) {
+			var rargs = make([]reflect.Value, len(args))
+			for i, arg := range args {
+				rargs[i] = reflect.ValueOf(ToInterface(arg))
+				if !rargs[i].Type().AssignableTo(value.Type().In(i)) && rargs[i].Type().ConvertibleTo(value.Type().In(i)) {
+					rargs[i] = rargs[i].Convert(value.Type().In(i))
+				}
+			}
+			rargs = value.Call(rargs)
+			switch len(rargs) {
+			case 0:
+				return nil, nil
+			case 1:
+				return FromInterface(rargs[0].Interface())
+			case 2:
+				if rargs[1].IsValid() {
+					return nil, rargs[1].Interface().(error)
+				}
+				return FromInterface(rargs[0].Interface())
+			}
+			return nil, nil
+		})}, nil
+	case reflect.Slice:
+		var (
+			l  = value.Len()
+			el reflect.Value
+			vo Object
+		)
+		arr := make([]Object, l)
+		for i := 0; i < l; i++ {
+			el = value.Index(i)
+			if isUndefinedReflectValue(el) {
+				vo = UndefinedValue
+			} else if vo, err = FromInterface(el.Interface()); err != nil {
+				return nil, err
+			}
+			arr[i] = vo
+		}
+		return &Array{Value: arr}, nil
+	case reflect.Array:
+		var (
+			l  = value.Len()
+			el reflect.Value
+			vo Object
+		)
+		arr := make([]Object, l)
+		for i := 0; i < l; i++ {
+			el = value.Index(i)
+			if isUndefinedReflectValue(el) {
+				vo = UndefinedValue
+			} else if vo, err = FromInterface(el.Interface()); err != nil {
+				return nil, err
+			}
+			arr[i] = vo
+		}
+		return &ImmutableArray{Value: arr}, nil
+	default:
+		s := NewReflectedStruct(reflect.Indirect(value).Type())
+		if s == nil {
+			return
+		}
+		err = nil
+		res = &ReflectedStructInstance{Struct: s, Instance: value}
 	}
-	err = nil
-	res = &ReflectedStructInstance{Struct: s, Instance: value}
 	return
+}
+
+func isUndefinedReflectValue(v reflect.Value) (ok bool) {
+	if !v.IsValid() {
+		return true
+	}
+	k := v.Kind()
+	switch k {
+	case reflect.Chan, reflect.Func, reflect.Map, reflect.Ptr, reflect.UnsafePointer, reflect.Interface, reflect.Slice:
+		return v.IsNil()
+	default:
+		return false
+	}
 }
