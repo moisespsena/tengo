@@ -524,6 +524,7 @@ func compiledGetAll(
 	expected M,
 ) {
 	vars := c.GetAll()
+	expected["$out"] = nil
 	require.Equal(t, len(expected), len(vars))
 
 	for k, v := range expected {
